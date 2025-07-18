@@ -31,5 +31,10 @@ def ocr_header():
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
 
-    text = ocr_with_ocr_space(file)
-    return jsonify({"header_text": text})
+    full_text = ocr_with_ocr_space(file)
+    first_line = full_text.strip().splitlines()[0] if full_text else ""
+    return jsonify({
+        "header_text": first_line,
+        "full_text": full_text
+    })
+
