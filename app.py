@@ -1,22 +1,33 @@
 from flask import Flask, request, jsonify
-import fitz  # PyMuPDF
-from PIL import Image
-import pytesseract
-import io
+import requests
 
 app = Flask(__name__)
 
+OCR_SPACE_API_KEY = "helloworld"  # Cámbiala por tu clave real si la tienes
+
+def ocr_with_ocr_space(file):
+    url = "https://api.ocr.space/parse/image"
+    payload = {
+        "apikey": OCR_SPACE_API_KEY,
+        "language": "eng",
+        "isOverlayRequired": False,
+        "scale": True,
+        "OCREngine": 2  # Usa OCR Engine 2 (mejor que el 1)
+    }
+    files = {"filename": (file.filename, file.stream, file.mimetype)}
+    response = requests.post(url, data=payload, files=files)
+    result = response.json()
+
+    try:
+        return result["ParsedResults"][0]["ParsedText"].strip()
+    except Exception:
+        return "Error: No se pudo leer texto"
+
 @app.route('/ocr-header', methods=['POST'])
 def ocr_header():
-    file = request.files['file']
+    file = request.files.get('file')
     if not file:
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({"error": "No file uploaded"}), 400
 
-    doc = fitz.open("pdf", file.read())
-    page = doc[0]
-    rect = fitz.Rect(30, 30, 200, 80)  # ajusta según posición del texto/logo
-    pix = page.get_pixmap(clip=rect, dpi=300)
-    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-
-    text = pytesseract.image_to_string(img, lang="eng")
-    return jsonify({"header_text": text.strip()})
+    text = ocr_with_ocr_space(file)
+    return jsonify({"header_text": text})
