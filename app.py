@@ -3,7 +3,9 @@ import requests
 
 app = Flask(__name__)
 
-OCR_SPACE_API_KEY = "helloworld"  # Cámbiala por tu clave real si la tienes
+import os
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # por si no se define, usa helloworld
+
 
 def ocr_with_ocr_space(file):
     url = "https://api.ocr.space/parse/image"
