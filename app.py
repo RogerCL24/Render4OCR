@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify
 import requests
+import os
 
 app = Flask(__name__)
 
-import os
-OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # por si no se define, usa helloworld
-
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # valor por defecto
 
 def ocr_with_ocr_space(file):
     url = "https://api.ocr.space/parse/image"
@@ -14,7 +13,7 @@ def ocr_with_ocr_space(file):
         "language": "eng",
         "isOverlayRequired": False,
         "scale": True,
-        "OCREngine": 2  # Usa OCR Engine 2 (mejor que el 1)
+        "OCREngine": 2
     }
     files = {"filename": (file.filename, file.stream, file.mimetype)}
     response = requests.post(url, data=payload, files=files)
@@ -33,9 +32,17 @@ def ocr_header():
 
     full_text = ocr_with_ocr_space(file)
     first_line = full_text.strip().splitlines()[0] if full_text else ""
+
+    # Detección de palabras clave (ignorando mayúsculas/minúsculas)
+    text_lower = full_text.lower()
+    hon_detected = "sí" if ("hon" or "wifi") in text_lower else "no"
+    wifi_detected = "WiFi" if ("hon" or "wifi") in text_lower else ""
+
     return jsonify({
         "header_text": first_line,
-        "full_text": full_text
+        "full_text": full_text,
+        "hon_detected": hon_detected,
+        "wifi_detected": wifi_detected
     })
 
 @app.route('/ping')
