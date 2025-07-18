@@ -35,7 +35,7 @@ def ocr_header():
 
     # Detección de palabras clave (ignorando mayúsculas/minúsculas)
     text_lower = full_text.lower()
-    hon_detected = "sí" if ("hon" or "wifi") in text_lower else "no"
+    hon_detected = "Sí" if ("hon" or "wifi") in text_lower else "no"
     wifi_detected = "WiFi" if ("hon" or "wifi") in text_lower else ""
 
     return jsonify({
