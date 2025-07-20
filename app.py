@@ -29,17 +29,17 @@ def extract_features(full_text):
     lines = full_text.splitlines()
     characteristics = []
 
-    # Buscar el índice donde empieza el bloque de características (línea con kg y rpm)
+    # 1. Buscar la línea que contiene "EAN:"
     start_index = -1
     for i, line in enumerate(lines):
-        if re.search(r'\b\d+\s*kg\b', line.lower()) and re.search(r'\b\d{3,4}\s*rpm\b', line.lower()):
-            start_index = i + 1  # Comenzamos desde la línea siguiente
+        if "ean:" in line.lower():
+            start_index = i + 1  # empezamos justo después de EAN
             break
 
     if start_index == -1:
-        return []  # No se encontró el punto de inicio
+        return []  # No se encontró la línea EAN
 
-    # Agrupar líneas en características completas
+    # 2. Unir líneas en características (si la siguiente empieza en minúscula)
     buffer = ''
     for line in lines[start_index:]:
         if not line.strip():
@@ -57,6 +57,7 @@ def extract_features(full_text):
         if len(characteristics) == 6:
             break
 
+    # Si queda una en buffer
     if buffer and len(characteristics) < 6:
         characteristics.append(buffer.strip())
 
