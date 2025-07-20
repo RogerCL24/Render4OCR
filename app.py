@@ -1,17 +1,17 @@
 from flask import Flask, request, jsonify
 import requests
 import os
-import re
 
 app = Flask(__name__)
 
-OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")
+OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")  # valor por defecto
+
 
 def ocr_with_ocr_space(file):
     url = "https://api.ocr.space/parse/image"
     payload = {
         "apikey": OCR_SPACE_API_KEY,
-        "language": "spa",
+        "language": "eng",
         "isOverlayRequired": False,
         "scale": True,
         "OCREngine": 2
@@ -25,43 +25,48 @@ def ocr_with_ocr_space(file):
     except Exception:
         return "Error: No se pudo leer texto"
 
-def extract_features(full_text):
-    lines = full_text.splitlines()
-    characteristics = []
 
-    # 1. Buscar la línea que contiene "EAN:"
-    start_index = -1
-    for i, line in enumerate(lines):
-        if "ean:" in line.lower():
-            start_index = i + 1  # empezamos justo después de EAN
+def extract_features_after_ean_marker(text):
+    lines = text.strip().splitlines()
+
+    # 1. Buscar línea con EAN:
+    ean_index = next((i for i, line in enumerate(lines) if 'EAN:' in line), None)
+    if ean_index is None:
+        return []
+
+    # 2. Buscar línea con 'kg' o 'rpm' DESPUÉS de EAN
+    start_index = None
+    for i in range(ean_index + 1, len(lines)):
+        line_lower = lines[i].lower()
+        if "kg" in line_lower or "rpm" in line_lower:
+            start_index = i + 1  # la siguiente línea marca el comienzo de features
             break
 
-    if start_index == -1:
-        return []  # No se encontró la línea EAN
+    if start_index is None or start_index >= len(lines):
+        return []
 
-    # 2. Unir líneas en características (si la siguiente empieza en minúscula)
-    buffer = ''
+    # 3. Recoger y unir características (hasta 6)
+    features = []
+    current = ""
     for line in lines[start_index:]:
-        if not line.strip():
-            continue  # Saltar líneas vacías
+        stripped = line.strip()
+        if not stripped:
+            continue
 
-        if buffer:
-            if line and line[0].islower():
-                buffer += ' ' + line.strip()
-            else:
-                characteristics.append(buffer.strip())
-                buffer = line.strip()
+        if stripped[0].islower() and current:
+            current += " " + stripped
         else:
-            buffer = line.strip()
+            if current:
+                features.append(current.strip())
+                if len(features) == 6:
+                    break
+            current = stripped
 
-        if len(characteristics) == 6:
-            break
+    if current and len(features) < 6:
+        features.append(current.strip())
 
-    # Si queda una en buffer
-    if buffer and len(characteristics) < 6:
-        characteristics.append(buffer.strip())
+    return features
 
-    return characteristics[:6]
 
 @app.route('/ocr-header', methods=['POST'])
 def ocr_header():
@@ -76,17 +81,21 @@ def ocr_header():
     hon_detected = "Sí" if "hon" in text_lower or "wifi" in text_lower else "No"
     wifi_detected = "WiFi" if hon_detected == "Sí" else ""
 
+    features = extract_features_after_ean_marker(full_text)
 
-    # Extraer características importantes
-    features = extract_features(full_text)
-
-    return jsonify({
+    response = {
         "header_text": first_line,
         "full_text": full_text,
         "hon_detected": hon_detected,
         "wifi_detected": wifi_detected,
-        "features": features
-    })
+    }
+
+    # Agregar features individualmente
+    for idx, feature in enumerate(features[:6], start=1):
+        response[f"feature_{idx}"] = feature
+
+    return jsonify(response)
+
 
 @app.route('/ping')
 def ping():
