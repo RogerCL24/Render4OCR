@@ -74,7 +74,8 @@ def ocr_header():
 
     text_lower = full_text.lower()
     hon_detected = "Sí" if "hon" in text_lower or "wifi" in text_lower else "No"
-    wifi_detected = "WiFi" if "wifi" in text_lower else ""
+    wifi_detected = "WiFi" if hon_detected == "Sí" else ""
+
 
     # Extraer características importantes
     features = extract_features(full_text)
